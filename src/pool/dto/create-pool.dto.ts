@@ -16,7 +16,25 @@ export enum TimeType {
   WEEKS = 'Week',
   MONTHS = 'Month',
 }
+export class ParticipantDto {
+  @ApiProperty({
+    description: 'Numéro de téléphone du participant',
+    example: '770000000',
+  })
+  @IsString()
+  @IsNotEmpty()
+  msisdn: string;
 
+  @ApiProperty({ description: 'Nom du participant', example: 'Jean' })
+  @IsString()
+  @IsNotEmpty()
+  nom: string;
+
+  @ApiProperty({ description: 'Tour du participant', example: 1 })
+  @IsInt()
+  @IsNotEmpty()
+  round: number;
+}
 export class CreatePoolDto {
   @ApiProperty({
     description: 'Nom de la tontine',
@@ -50,11 +68,12 @@ export class CreatePoolDto {
 
   @IsOptional()
   inviteCode: number;
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Liste des participants',
+    type: [ParticipantDto],
+  })
   @IsArray()
-  @IsString({ each: true })
-  @IsOptional()
-  participants: string[];
+  participants: ParticipantDto[];
   @IsOptional()
   createdBy: string;
 }

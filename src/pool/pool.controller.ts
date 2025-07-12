@@ -34,8 +34,8 @@ export class PoolController {
   }
 
   @Get()
-  findAll() {
-    return this.poolService.findAllPool();
+  findAll(@AuthUser() userId: string) {
+    return this.poolService.findAllPool(userId);
   }
 
   @Get(':id')
@@ -72,15 +72,6 @@ export class PoolController {
     @Param('code', ParseIntPipe) code: number,
   ) {
     return this.poolService.joinPool(code, msisdn);
-  }
-
-  @Delete(':id')
-  @ApiOperation({ summary: 'Join tontine' })
-  @ApiParam({
-    name: 'id',
-  })
-  deleteOnePool(@Param('id', ParseUUIDPipe) id: string) {
-    return this.poolService.deleteOnePool(id);
   }
 
   @Delete()

@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { generate } from 'otp-generator';
 import { EmailService } from 'src/emails/emails.service';
-import { computeCycleTime } from 'src/helpers/pool.helper';
 import { PoolMembersRepository } from 'src/pool-members/pool-members.repository';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreatePoolDto } from './dto/create-pool.dto';
@@ -27,9 +26,9 @@ export class PoolService {
     try {
       // generate invitation code
       const inviteCode = Number(
-        generate(4, {
+        generate(6, {
           digits: true,
-          upperCaseAlphabets: false,
+          upperCaseAlphabets: true,
           specialChars: false,
           lowerCaseAlphabets: false,
         }),
@@ -43,7 +42,6 @@ export class PoolService {
     }
   }
 
- 
   async updatePool(id: string, userId: string, updatePool: UpdatePoolDto) {
     try {
       const findPool = await this.poolRepository.findOnePool(id);
@@ -103,8 +101,6 @@ export class PoolService {
     }
   }
 
- 
-
   // activate and start pool when all users are available
   async activatePool(poolId: string) {
     try {
@@ -113,11 +109,6 @@ export class PoolService {
       const currentMembers = findPool.numberOfParticipants?.length;
       if (invitedMembers != currentMembers)
         return new BadRequestException('Not enough users to activate the pool');
-
-     
-
-    
-     
 
       return { message: 'Pool activated' };
     } catch (error) {
@@ -132,9 +123,9 @@ export class PoolService {
       return new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
-  async findAllPool() {
+  async findAllPool(id: string) {
     try {
-      return await this.poolRepository.findAllPool();
+      return await this.poolRepository.findAllPool(id);
     } catch (error) {
       return new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }

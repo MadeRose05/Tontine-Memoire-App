@@ -9,12 +9,12 @@ datasource db {
 
 // User Model
 model User {
-  id             String                  @id @default(uuid())
-  msisdn         String                  @unique
+  id             String    @id @default(uuid())
+  msisdn         String    @unique
   pin            String
   name           String
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
   tempOTP        TempOTP?
   createdTontine Tontine[]
   Bank           Bank?
@@ -74,44 +74,44 @@ model Participants {
   tontine   Tontine  @relation(fields: [tontineId], references: [id])
   tontineId String
   userId    String
+  round     Int
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   Transaction Transaction[]
-
 }
 
 // Pool Model
 model Tontine {
-  id          String    @id @default(uuid())
-  nom       String
-  description String?
-  cotisation  Int
-  status      TontineStatus     @default(Pending)
-  totalRound Int
-  frequence   Frequence @default(Month)
-  startDate            String? 
-  inviteCode           Int? // invite code to join pool
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
-  wallet               Wallets?
-  participants              Participants[] // accepted members
-  owner        User                @relation(fields: [createdBy], references: [id], onDelete: Cascade)
-  createdBy            String
- 
+  id           String         @id @default(uuid())
+  nom          String
+  description  String?
+  cotisation   Int
+  status       TontineStatus  @default(Pending)
+  totalRound   Int
+  frequence    Frequence      @default(Month)
+  startDate    String?
+  inviteCode   Int? // invite code to join pool
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  wallet       Wallets?
+  participants Participants[] // accepted members
+  owner        User           @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  createdBy    String
+  Transaction  Transaction[]
+  Invitation   Invitation[]
 
   @@index([id, nom])
-  Transaction Transaction[]
-  Invitation Invitation[]
 }
-model Transaction{
-  id        String   @id @default(uuid())
+
+model Transaction {
+  id        String       @id @default(uuid())
   amount    Decimal
-  senderId String
-  tour Int
+  senderId  String
+  tour      Int
   tontineId String
-  tontine Tontine @relation(fields: [tontineId], references: [id])
-  sender    Participants     @relation(fields: [senderId], references: [id], onDelete:Cascade)
-  createdAt DateTime @default(now())
+  tontine   Tontine      @relation(fields: [tontineId], references: [id])
+  sender    Participants @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
 }
 
 // Wallet Model
@@ -120,8 +120,8 @@ model Wallets {
   amount        Int
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  tontine          Tontine  @relation(fields: [tontineId], references: [id], onDelete: Cascade)
-  tontineId        String   @unique
+  tontine       Tontine  @relation(fields: [tontineId], references: [id], onDelete: Cascade)
+  tontineId     String   @unique
 
   @@index([accountNumber])
 }
@@ -131,7 +131,9 @@ model Invitation {
   id        String        @id @unique @default(uuid())
   status    InvitedStatus @default(PENDING)
   msisdn    String
-  memberId  String?        @unique
+  nom       String
+  round     Int
+  memberId  String?       @unique
   tontine   Tontine       @relation(fields: [tontineId], references: [id], onDelete: Cascade)
   tontineId String
 
@@ -149,11 +151,13 @@ enum Frequence {
   Week
   Day
 }
+
 enum TontineStatus {
   Pending
   Ongoing
   Ended
 }
+
 enum TransactionStatus {
   Pending
   Success

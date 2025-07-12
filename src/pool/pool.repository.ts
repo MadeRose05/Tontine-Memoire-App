@@ -82,9 +82,10 @@ export class PoolRepository {
     }
   }
 
-  async findAllPool() {
+  async findAllPool(id:string) {
     try {
       return await this.prismaService.tontine.findMany({
+        where:{createdBy:id},
         include: { wallet: true, participants: true, owner: true },
       });
     } catch (error) {
