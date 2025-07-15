@@ -3,6 +3,7 @@ import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../widgets/custom_app_bar.dart';
 import 'create_tour.dart'; // Import de la page create_tour
+import '../../domain/services/auth_service.dart'; // Import du service d'authentification
 
 class CreateRecap extends StatefulWidget {
   final Map<String, dynamic> formData;
@@ -15,6 +16,38 @@ class CreateRecap extends StatefulWidget {
 
 class _CreateRecapState extends State<CreateRecap> {
   List<Map<String, String>> participants = [];
+  bool _isLoadingUserData = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    try {
+      final userData = await AuthService.getStoredUserData();
+      if (userData['userName'] != null && userData['msisdn'] != null) {
+        setState(() {
+          participants.add({
+            'name': userData['userName']!,
+            'phone': userData['msisdn']!,
+            'isCurrentUser': 'true', // Marquer comme utilisateur actuel
+          });
+          _isLoadingUserData = false;
+        });
+      } else {
+        setState(() {
+          _isLoadingUserData = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading current user: $e');
+      setState(() {
+        _isLoadingUserData = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +57,13 @@ class _CreateRecapState extends State<CreateRecap> {
         showBackButton: true,
         title: 'Nouvelle O\'Coti',
       ),
-      body: SingleChildScrollView(
+      body: _isLoadingUserData
+          ? Center(
+        child: CircularProgressIndicator(
+          color: Colors.orange,
+        ),
+      )
+          : SingleChildScrollView(
         padding: EdgeInsets.all(16),
         child: Column(
           children: [
@@ -101,7 +140,7 @@ class _CreateRecapState extends State<CreateRecap> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Participant',
+                              'Ajouter un participant',
                               style: TextStyle(
                                 color: Colors.grey[400],
                                 fontSize: 14,
@@ -121,13 +160,16 @@ class _CreateRecapState extends State<CreateRecap> {
                     if (participants.isNotEmpty)
                       Column(
                         children: participants.map((participant) {
+                          final isCurrentUser = participant['isCurrentUser'] == 'true';
                           return Container(
                             margin: EdgeInsets.only(bottom: 12),
                             padding: EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.1),
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                              border: Border.all(
+                                  color: Colors.orange.withOpacity(0.3)
+                              ),
                             ),
                             child: Row(
                               children: [
@@ -147,13 +189,35 @@ class _CreateRecapState extends State<CreateRecap> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        participant['name']!,
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.orange,
-                                        ),
+                                      Row(
+                                        children: [
+                                          if (isCurrentUser) ...[
+                                            Container(
+                                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: Colors.orange,
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                              child: Text(
+                                                'Vous',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          ] else ...[
+                                            Text(
+                                              participant['name']!,
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.orange,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ),
                                       if (participant['phone']!.isNotEmpty)
                                         Text(
@@ -166,17 +230,18 @@ class _CreateRecapState extends State<CreateRecap> {
                                     ],
                                   ),
                                 ),
-                                IconButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      participants.remove(participant);
-                                    });
-                                  },
-                                  icon: Icon(
-                                    Icons.close,
-                                    color: Colors.grey[400],
+                                if (!isCurrentUser) // L'utilisateur actuel ne peut pas être supprimé
+                                  IconButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        participants.remove(participant);
+                                      });
+                                    },
+                                    icon: Icon(
+                                      Icons.close,
+                                      color: Colors.grey[400],
+                                    ),
                                   ),
-                                ),
                               ],
                             ),
                           );
@@ -188,7 +253,7 @@ class _CreateRecapState extends State<CreateRecap> {
             ),
             SizedBox(height: 32),
 
-            // Bouton Suivant (remplace Ajouter)
+            // Bouton Suivant (minimum 2 participants requis)
             SizedBox(
               width: double.infinity,
               child: Material(
@@ -200,7 +265,7 @@ class _CreateRecapState extends State<CreateRecap> {
                   child: Container(
                     padding: EdgeInsets.symmetric(vertical: 16),
                     child: Text(
-                      'Suivant',
+                      'Suivant ${participants.length >= 2 ? '' : '(${2 - participants.length} participant${2 - participants.length > 1 ? 's' : ''} manquant${2 - participants.length > 1 ? 's' : ''})'}',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white,
@@ -312,6 +377,7 @@ class _CreateRecapState extends State<CreateRecap> {
                                 participants.add({
                                   'name': name,
                                   'phone': phone,
+                                  'isCurrentUser': 'false',
                                 });
                               }
                             });
@@ -406,10 +472,13 @@ class _CreateRecapState extends State<CreateRecap> {
   }
 
   void _addGenericParticipant() {
+    // Compter seulement les participants autres que l'utilisateur actuel
+    final otherParticipantsCount = participants.where((p) => p['isCurrentUser'] != 'true').length;
     setState(() {
       participants.add({
-        'name': 'Participant ${participants.length + 1}',
+        'name': 'Participant ${otherParticipantsCount + 1}',
         'phone': '',
+        'isCurrentUser': 'false',
       });
     });
   }
@@ -418,7 +487,7 @@ class _CreateRecapState extends State<CreateRecap> {
     if (participants.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Veuillez ajouter au moins 2 participants'),
+          content: Text('Veuillez ajouter au moins 2 participants (vous inclus)'),
           backgroundColor: Colors.red,
         ),
       );

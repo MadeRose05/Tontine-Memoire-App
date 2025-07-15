@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import '../widgets/custom_app_bar.dart';
 import 'create_recap.dart';
 
-
 class CreateTontineForm extends StatefulWidget {
   @override
   _CreateTontineFormState createState() => _CreateTontineFormState();
@@ -17,8 +16,10 @@ class _CreateTontineFormState extends State<CreateTontineForm> {
 
   String _selectedStartDate = '';
   String _selectedCurrency = 'F CFA';
+  String _selectedPeriodicity = 'mensuelle';
 
   final List<String> _currencyOptions = ['F CFA', 'USD', 'EUR'];
+  final List<String> _periodicityOptions = ['quotidienne', 'hebdomadaire', 'mensuelle'];
 
   @override
   void dispose() {
@@ -64,7 +65,7 @@ class _CreateTontineFormState extends State<CreateTontineForm> {
                   children: [
                     // Header
                     Text(
-                      'Créez une Tontine a périodicité mensuelle',
+                      'Créez une Tontine personnalisée',
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey[700],
@@ -176,6 +177,56 @@ class _CreateTontineFormState extends State<CreateTontineForm> {
                           return 'Le nombre de tour doit être au minimum 2';
                         }
                         return null;
+                      },
+                    ),
+                    SizedBox(height: 24),
+
+                    // Périodicité
+                    Text(
+                      'Périodicité',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: _selectedPeriodicity,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.orange),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
+                      ),
+                      items: _periodicityOptions.map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(
+                            value.substring(0, 1).toUpperCase() + value.substring(1),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _selectedPeriodicity = newValue!;
+                        });
                       },
                     ),
                     SizedBox(height: 32),
@@ -341,12 +392,14 @@ class _CreateTontineFormState extends State<CreateTontineForm> {
                                 return;
                               }
 
-                              // Process form data
+                              // Process form data (description vide pour l'API)
                               final formData = {
                                 'name': _nameController.text,
+                                'description': '', // Description vide
                                 'tours': int.parse(_toursController.text),
                                 'amount': double.parse(_amountController.text),
                                 'currency': _selectedCurrency,
+                                'periodicity': _selectedPeriodicity,
                                 'startDate': _selectedStartDate,
                               };
 

@@ -26,12 +26,16 @@ class _JoinCodeState extends State<JoinCode> {
     });
 
     try {
-      final tontine = await TontineService.getTontineByUser();
+      // Récupérer la tontine par le code
+      final tontine = await TontineService.getTontineByCode(_codeController.text.trim());
 
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => JoinRecap(tontine: tontine),
+          builder: (context) => JoinRecap(
+            tontine: tontine,
+            inviteCode: _codeController.text.trim(),
+          ),
         ),
       );
     } catch (e) {

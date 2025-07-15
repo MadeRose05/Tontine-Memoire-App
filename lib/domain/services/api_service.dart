@@ -25,7 +25,8 @@ class ApiService {
     return headers;
   }
 
-  static Future<Map<String, dynamic>> get(String endpoint) async {
+  // Changement: retourner dynamic au lieu de Map<String, dynamic>
+  static Future<dynamic> get(String endpoint) async {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
@@ -48,7 +49,7 @@ class ApiService {
         body: json.encode(data),
       );
 
-      return _handleResponse(response);
+      return _handleResponse(response) as Map<String, dynamic>;
     } catch (e) {
       throw Exception('Network error: $e');
     }
@@ -63,7 +64,7 @@ class ApiService {
         body: json.encode(data),
       );
 
-      return _handleResponse(response);
+      return _handleResponse(response) as Map<String, dynamic>;
     } catch (e) {
       throw Exception('Network error: $e');
     }
@@ -78,7 +79,7 @@ class ApiService {
         body: json.encode(data),
       );
 
-      return _handleResponse(response);
+      return _handleResponse(response) as Map<String, dynamic>;
     } catch (e) {
       throw Exception('Network error: $e');
     }
@@ -100,13 +101,14 @@ class ApiService {
     }
   }
 
-  // Méthode pour gérer les réponses HTTP
-  static Map<String, dynamic> _handleResponse(http.Response response) {
+  // Méthode pour gérer les réponses HTTP - retourne maintenant dynamic
+  static dynamic _handleResponse(http.Response response) {
     print('Response status: ${response.statusCode}');
     print('Response body: ${response.body}');
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isNotEmpty) {
+        // Retourner directement le résultat de json.decode (peut être Map ou List)
         return json.decode(response.body);
       } else {
         return {'message': 'Success'};
@@ -117,7 +119,7 @@ class ApiService {
 
       try {
         final errorResponse = json.decode(response.body);
-        if (errorResponse['message'] != null) {
+        if (errorResponse is Map && errorResponse['message'] != null) {
           errorMessage = errorResponse['message'];
         }
       } catch (e) {
@@ -160,13 +162,13 @@ class ApiService {
   }
 
   // Méthode pour les requêtes avec gestion automatique du token expiré
-  static Future<Map<String, dynamic>> authenticatedRequest(
+  static Future<dynamic> authenticatedRequest(
       String method,
       String endpoint, {
         Map<String, dynamic>? data,
       }) async {
     try {
-      Map<String, dynamic> response;
+      dynamic response;
 
       switch (method.toUpperCase()) {
         case 'GET':

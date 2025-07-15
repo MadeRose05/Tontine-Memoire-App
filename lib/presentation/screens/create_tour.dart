@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../domain/services/tontine_service.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/result_bottomSheet.dart';
+
 
 class CreateTour extends StatefulWidget {
   final Map<String, dynamic> formData;
@@ -12,6 +15,7 @@ class CreateTour extends StatefulWidget {
 
 class _CreateTourState extends State<CreateTour> {
   late List<Map<String, String>> participants;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -90,11 +94,20 @@ class _CreateTourState extends State<CreateTour> {
                     ),
                     SizedBox(height: 16),
 
-                    // Liste réorganisable
+                    // Liste réorganisable avec paramètres améliorés
                     ReorderableListView.builder(
                       shrinkWrap: true,
                       physics: NeverScrollableScrollPhysics(),
                       itemCount: participants.length,
+                      // Améliorer la sensibilité du drag and drop
+                      buildDefaultDragHandles: false,
+                      // Supprimer le conteneur blanc de l'élément en cours de déplacement
+                      proxyDecorator: (child, index, animation) {
+                        return Material(
+                          color: Colors.transparent,
+                          child: child,
+                        );
+                      },
                       onReorder: (oldIndex, newIndex) {
                         setState(() {
                           if (newIndex > oldIndex) {
@@ -106,89 +119,118 @@ class _CreateTourState extends State<CreateTour> {
                       },
                       itemBuilder: (context, index) {
                         final participant = participants[index];
-                        return Container(
+                        final isCurrentUser = participant['isCurrentUser'] == 'true';
+
+                        return ReorderableDragStartListener(
                           key: ValueKey(participant['name']! + index.toString()),
-                          margin: EdgeInsets.only(bottom: 12),
-                          child: Card(
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Container(
-                              padding: EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.withOpacity(0.1),
+                          index: index,
+                          child: Container(
+                            margin: EdgeInsets.only(bottom: 12),
+                            child: Card(
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.orange.withOpacity(0.3)),
                               ),
-                              child: Row(
-                                children: [
-                                  // Numéro d'ordre
-                                  Container(
-                                    width: 32,
-                                    height: 32,
-                                    decoration: BoxDecoration(
-                                      color: Colors.orange,
-                                      borderRadius: BorderRadius.circular(16),
+                              child: Container(
+                                padding: EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: Colors.orange.withOpacity(0.3)
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    // Numéro d'ordre
+                                    Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange,
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          '${index + 1}',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                    child: Center(
+                                    SizedBox(width: 16),
+
+                                    // Avatar du participant
+                                    CircleAvatar(
+                                      backgroundColor: Colors.orange,
+                                      radius: 20,
                                       child: Text(
-                                        '${index + 1}',
+                                        participant['name']![0].toUpperCase(),
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold,
-                                          fontSize: 14,
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  SizedBox(width: 16),
+                                    SizedBox(width: 12),
 
-                                  // Avatar du participant
-                                  CircleAvatar(
-                                    backgroundColor: Colors.orange,
-                                    radius: 20,
-                                    child: Text(
-                                      participant['name']![0].toUpperCase(),
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: 12),
-
-                                  // Informations du participant
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          participant['name']!,
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.orange,
+                                    // Informations du participant
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              if (isCurrentUser) ...[
+                                                Container(
+                                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.orange,
+                                                    borderRadius: BorderRadius.circular(10),
+                                                  ),
+                                                  child: Text(
+                                                    'Vous',
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ] else ...[
+                                                Text(
+                                                  participant['name']!,
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.orange,
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
                                           ),
-                                        ),
-                                        if (participant['phone']!.isNotEmpty)
-                                          Text(
-                                            participant['phone']!,
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.grey[600],
+                                          if (participant['phone']!.isNotEmpty)
+                                            Text(
+                                              participant['phone']!,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.grey[600],
+                                              ),
                                             ),
-                                          ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
-                                  ),
 
-                                  // Icône de drag
-                                  Icon(
-                                    Icons.drag_handle,
-                                    color: Colors.grey[400],
-                                  ),
-                                ],
+                                    // Icône de drag
+                                    Icon(
+                                      Icons.drag_handle,
+                                      color: Colors.grey[400],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -205,14 +247,25 @@ class _CreateTourState extends State<CreateTour> {
             SizedBox(
               width: double.infinity,
               child: Material(
-                color: Colors.orange,
+                color: _isLoading ? Colors.grey : Colors.orange,
                 borderRadius: BorderRadius.circular(12),
                 child: InkWell(
-                  onTap: _sendTontine,
+                  onTap: _isLoading ? null : _sendTontine,
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Text(
+                    child: _isLoading
+                        ? Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    )
+                        : Text(
                       'Envoyer',
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -231,27 +284,113 @@ class _CreateTourState extends State<CreateTour> {
     );
   }
 
-  void _sendTontine() {
-    // Créer l'objet tontine final avec l'ordre des participants
-    final finalTontineData = {
-      ...widget.formData,
-      'participants': participants,
-    };
+  Future<void> _sendTontine() async {
+    setState(() {
+      _isLoading = true;
+    });
 
-    // Afficher un message de confirmation
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Tontine créée avec succès !'),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 2),
-      ),
-    );
+    try {
+      // Préparer les participants avec l'ordre correct
+      final List<Map<String, dynamic>> participantsData = participants.asMap().entries.map((entry) {
+        final index = entry.key;
+        final participant = entry.value;
+        return {
+          "msisdn": participant['phone'] ?? '',
+          "nom": participant['name'] ?? '',
+          "round": index + 1, // L'ordre commence à 1
+        };
+      }).toList();
 
-    // Ici vous pouvez ajouter la logique pour sauvegarder la tontine
-    // Par exemple, appeler une API ou sauvegarder en local
-    print('Tontine Data: $finalTontineData');
+      // Mapper la fréquence selon l'enum (API attend Day, Week, Month avec majuscule)
+      String frequence = 'Month'; // valeur par défaut
+      if (widget.formData['frequency'] != null) {
+        switch (widget.formData['frequency'].toString().toLowerCase()) {
+          case 'day':
+            frequence = 'Day';
+            break;
+          case 'week':
+            frequence = 'Week';
+            break;
+          case 'month':
+          default:
+            frequence = 'Month';
+            break;
+        }
+      }
 
-    // Navigation vers la page précédente ou une autre page
-    Navigator.popUntil(context, (route) => route.isFirst);
+      // Formater la date de début en ISO 8601
+      String startDate = DateTime.now().toIso8601String();
+      if (widget.formData['startDate'] != null) {
+        // Si c'est déjà un DateTime
+        if (widget.formData['startDate'] is DateTime) {
+          startDate = (widget.formData['startDate'] as DateTime).toIso8601String();
+        } else if (widget.formData['startDate'] is String) {
+          // Si c'est une string, essayer de la parser
+          try {
+            // Gérer le format "24/7/2025"
+            String dateString = widget.formData['startDate'];
+            if (dateString.contains('/')) {
+              List<String> parts = dateString.split('/');
+              if (parts.length == 3) {
+                int day = int.parse(parts[0]);
+                int month = int.parse(parts[1]);
+                int year = int.parse(parts[2]);
+                startDate = DateTime(year, month, day).toIso8601String();
+              }
+            } else {
+              // Essayer de parser directement
+              startDate = DateTime.parse(widget.formData['startDate']).toIso8601String();
+            }
+          } catch (e) {
+            print('Error parsing date: $e, using current date');
+            startDate = DateTime.now().toIso8601String();
+          }
+        }
+      }
+
+      // Créer l'objet tontine pour l'API (sans le champ description)
+      final Map<String, dynamic> tontineData = {
+        "nom": widget.formData['name'] ?? '',
+        "totalRound": participantsData.length,
+        "frequence": frequence,
+        "cotisation": widget.formData['amount'] ?? 0,
+        "startDate": startDate,
+        "participants": participantsData,
+      };
+
+      print('Sending tontine data: $tontineData');
+
+      // Appel API
+      await TontineService.createTontine(tontineData);
+
+      // Succès
+      ResultBottomSheet.show(
+        context,
+        isSuccess: true,
+        message: 'Tontine créée avec succès !',
+        onDismiss: () {
+          // Invalider le cache et retourner à la page principale
+          TontineService.invalidateCache();
+          Navigator.popUntil(context, (route) => route.isFirst);
+        },
+      );
+
+    } catch (e) {
+      print('Error creating tontine: $e');
+
+      // Erreur
+      ResultBottomSheet.show(
+        context,
+        isSuccess: false,
+        message: 'Erreur lors de la création de la tontine: ${e.toString()}',
+        onDismiss: () {
+          // Reste sur la page actuelle
+        },
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 }

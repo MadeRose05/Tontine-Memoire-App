@@ -8,13 +8,13 @@ class TontineService {
   static bool _isLoading = false;
 
   static Future<List<Tontine>> getTontines() async {
-    // Si on a déjà les données en cache et qu'on n'est pas en train de charger
+    // Commenté pour utiliser les données mockées pendant les tests
+
     if (_cachedTontines != null && !_isLoading) {
       print('Returning cached tontines');
       return _cachedTontines!;
     }
 
-    // Si on est déjà en train de charger, attendre
     if (_isLoading) {
       while (_isLoading) {
         await Future.delayed(Duration(milliseconds: 100));
@@ -29,126 +29,161 @@ class TontineService {
       final response = await ApiService.get('/tontine');
       print('Tontines fetched from API: $response');
 
-      // Vérifier le status code et la structure de la réponse
-      if (response is Map<String, dynamic>) {
-        // Gérer les status codes d'erreur
+      dynamic tontinesData;
+
+      if (response is List) {
+        tontinesData = response;
+      } else if (response is Map<String, dynamic>) {
         if (response.containsKey('status') && response['status'] >= 400) {
           throw Exception('API Error: ${response['status']} - ${response['message'] ?? 'Unknown error'}');
         }
 
-        // Extraire les données des tontines
-        dynamic tontinesData = [];
         if (response.containsKey('data')) {
           tontinesData = response['data'];
-        } else if (response is List) {
+        } else {
           tontinesData = response;
         }
-
-        // Si c'est un Map, cela signifie qu'il y a une seule tontine
-        if (tontinesData is Map<String, dynamic>) {
-          tontinesData = [tontinesData];
-        }
-
-        // Convertir en List<dynamic> si ce n'est pas déjà le cas
-        List<dynamic> tontinesList = tontinesData is List ? tontinesData : [];
-
-        // Si le tableau est vide, aucune tontine
-        if (tontinesList.isEmpty) {
-          print('No tontines found in API response');
-          _cachedTontines = [];
-          _isLoading = false;
-          return [];
-        }
-
-        // Parser les tontines
-        List<Tontine> tontines = tontinesList.map<Tontine>((tontineJson) {
-          return _parseTontineFromJson(tontineJson);
-        }).toList();
-
-        _cachedTontines = tontines;
-        _isLoading = false;
-        return tontines;
       } else {
         throw Exception('Invalid response format');
       }
+
+      // Si c'est un Map, cela signifie qu'il y a une seule tontine
+      if (tontinesData is Map<String, dynamic>) {
+        tontinesData = [tontinesData];
+      }
+
+      // Convertir en List<dynamic> si ce n'est pas déjà le cas
+      List<dynamic> tontinesList = tontinesData is List ? tontinesData : [];
+
+      // Si le tableau est vide, aucune tontine
+      if (tontinesList.isEmpty) {
+        print('No tontines found in API response');
+        _cachedTontines = [];
+        _isLoading = false;
+        return [];
+      }
+
+      // Parser les tontines
+      List<Tontine> tontines = tontinesList.map<Tontine>((tontineJson) {
+        return _parseTontineFromJson(tontineJson);
+      }).toList();
+
+      _cachedTontines = tontines;
+      _isLoading = false;
+      return tontines;
 
     } catch (e) {
       print('Failed to fetch tontines from API: $e');
       _isLoading = false;
 
-      // En cas d'erreur, retourner les données mock
-      print('Using mock tontines instead');
-      _cachedTontines = _getMockTontines();
-      return _cachedTontines!;
+      // En cas d'erreur, retourner une liste vide au lieu des données mock
+      print('Returning empty list instead of mock data');
+      _cachedTontines = [];
+      return [];
     }
+
+
+    // Retourner les données mockées pour les tests
+    if (_cachedTontines == null) {
+      _cachedTontines = _getMockTontines();
+    }
+    return _cachedTontines!;
   }
 
-  // Méthode pour parser une tontine depuis JSON
+  // Méthode pour parser une tontine depuis JSON - CORRIGÉE
   static Tontine _parseTontineFromJson(Map<String, dynamic> json) {
-    // Mapper le status string vers l'enum
-    TontineStatus status = TontineStatus.pending;
-    if (json['tontineStatus'] != null) {
-      switch (json['tontineStatus'].toString().toLowerCase()) {
-        case 'ongoing':
-          status = TontineStatus.ongoing;
-          break;
-        case 'ended':
-        case 'completed':
-          status = TontineStatus.ended;
-          break;
-        default:
-          status = TontineStatus.pending;
+    try {
+      // Mapper le status string vers l'enum
+      TontineStatus status = TontineStatus.pending;
+      if (json['status'] != null) {
+        switch (json['status'].toString().toLowerCase()) {
+          case 'ongoing':
+            status = TontineStatus.ongoing;
+            break;
+          case 'ended':
+          case 'completed':
+            status = TontineStatus.ended;
+            break;
+          case 'pending':
+          default:
+            status = TontineStatus.pending;
+        }
       }
-    }
 
-    // Mapper la périodicité
-    FrequenceTontine periodicite = FrequenceTontine.month;
-    if (json['periodicite'] != null) {
-      switch (json['periodicite'].toString().toLowerCase()) {
-        case 'day':
-          periodicite = FrequenceTontine.day;
-          break;
-        case 'week':
-          periodicite = FrequenceTontine.week;
-          break;
-        default:
-          periodicite = FrequenceTontine.month;
+      // Mapper la périodicité
+      FrequenceTontine periodicite = FrequenceTontine.month;
+      if (json['frequence'] != null) {
+        switch (json['frequence'].toString().toLowerCase()) {
+          case 'day':
+            periodicite = FrequenceTontine.day;
+            break;
+          case 'week':
+            periodicite = FrequenceTontine.week;
+            break;
+          case 'month':
+          default:
+            periodicite = FrequenceTontine.month;
+        }
       }
-    }
 
-    // Parser les participants
-    List<Participant> participants = [];
-    if (json['participants'] != null && json['participants'] is List) {
-      participants = (json['participants'] as List).map<Participant>((participantJson) {
-        return Participant(
-          nom: participantJson['nom'] ?? '',
-          msisdn: participantJson['msisdn'] ?? '',
-          join: participantJson['join'] ?? false,
-          round: participantJson['round'] ?? 0,
-          currentAmount: (participantJson['currentAmount'] ?? 0).toDouble(),
-          expectedAmount: (participantJson['expectedAmount'] ?? 0).toDouble(),
-          emitPayement: participantJson['emitPayement'] ?? [],
-          receivPayement: participantJson['receivPayement'] ?? [],
-        );
-      }).toList();
-    }
+      // Parser les participants - STRUCTURE CORRIGÉE
+      List<Participant> participants = [];
+      if (json['participants'] != null && json['participants'] is List) {
+        participants = (json['participants'] as List).map<Participant>((participantJson) {
+          // Extraire les données de l'utilisateur
+          String nom = '';
+          String msisdn = '';
 
-    return Tontine(
-      id: json['id']?.toString() ?? '',
-      nom: json['nom'] ?? '',
-      status: status,
-      periodicite: periodicite,
-      cotisation: (json['cotisation'] ?? 0).toDouble(),
-      frais: (json['frais'] ?? 0).toDouble(),
-      dateDebut: json['dateDebut'] != null
-          ? DateTime.parse(json['dateDebut'])
-          : DateTime.now(),
-      nbreTour: json['nbreTour'] ?? 0,
-      tour: json['tour'] ?? 0,
-      codeEntree: json['codeEntree'] ?? '',
-      owner: json['owner'] ?? '',
-      participants: participants,
-    );
+          if (participantJson['user'] != null) {
+            final user = participantJson['user'];
+            nom = user['name'] ?? '';
+            msisdn = user['msisdn'] ?? '';
+          }
+
+          return Participant(
+            nom: nom,
+            msisdn: msisdn,
+            join: true, // Si le participant est dans la liste, il a rejoint
+            round: participantJson['round'] ?? 0,
+            currentAmount: (participantJson['currentAmount'] ?? 0).toDouble(),
+            expectedAmount: (participantJson['expectedAmount'] ?? 0).toDouble(),
+            emitPayement: participantJson['emitPayement'] ?? [],
+            receivPayement: participantJson['receivPayement'] ?? [],
+          );
+        }).toList();
+      }
+
+      // Parser le propriétaire - STRUCTURE CORRIGÉE
+      String owner = '';
+      if (json['owner'] != null) {
+        if (json['owner'] is String) {
+          owner = json['owner'];
+        } else if (json['owner'] is Map) {
+          owner = json['owner']['name'] ?? json['owner']['msisdn'] ?? '';
+        }
+      }
+
+      return Tontine(
+        id: json['id']?.toString() ?? '',
+        nom: json['nom'] ?? '',
+        status: status,
+        periodicite: periodicite,
+        cotisation: (json['cotisation'] ?? 0).toDouble(),
+        frais: (json['frais'] ?? 0).toDouble(),
+        dateDebut: json['startDate'] != null
+            ? DateTime.parse(json['startDate'])
+            : DateTime.now(),
+        nbreTour: json['totalRound'] ?? 0,
+        tour: json['tour'] ?? 0,
+        codeEntree: json['inviteCode'] ?? '',
+        owner: owner,
+        participants: participants,
+      );
+    } catch (e) {
+      print('Error parsing tontine from JSON: $e');
+      print('JSON data: $json');
+      rethrow;
+    }
   }
 
   // Méthode pour invalider le cache et forcer un refresh
@@ -160,18 +195,32 @@ class TontineService {
   static Future<Tontine> createTontine(Map<String, dynamic> tontineData) async {
     print('Creating tontine...');
     try {
-      final response = await ApiService.post('/tontines', tontineData);
+      final response = await ApiService.post('/tontine', tontineData);
       print('Tontine created: $response');
 
       // Invalider le cache pour forcer un refresh
       invalidateCache();
 
       if (response is Map<String, dynamic>) {
-        if (response.containsKey('status') && response['status'] >= 400) {
-          throw Exception('API Error: ${response['status']} - ${response['message'] ?? 'Unknown error'}');
+        // Vérifier s'il y a une erreur HTTP (champ différent du status de la tontine)
+        if (response.containsKey('httpStatus') && response['httpStatus'] >= 400) {
+          String errorMessage = 'Unknown error';
+          if (response['message'] != null) {
+            if (response['message'] is List) {
+              errorMessage = (response['message'] as List).join(', ');
+            } else if (response['message'] is String) {
+              errorMessage = response['message'];
+            }
+          }
+          throw Exception('API Error: ${response['httpStatus']} - $errorMessage');
         }
 
-        // Si on a les données de la tontine créée
+        // Si la réponse contient directement les données de la tontine
+        if (response.containsKey('id')) {
+          return _parseTontineFromJson(response);
+        }
+
+        // Si les données sont dans un champ 'data'
         if (response.containsKey('data')) {
           return _parseTontineFromJson(response['data']);
         }
@@ -181,7 +230,17 @@ class TontineService {
 
     } catch (e) {
       print('Failed to create tontine: $e');
-      throw Exception('Failed to create tontine: $e');
+
+      // Extraire un message d'erreur plus lisible
+      String errorMessage = e.toString();
+      if (errorMessage.contains('API Error:')) {
+        int index = errorMessage.indexOf('API Error:');
+        if (index != -1) {
+          errorMessage = errorMessage.substring(index + 'API Error: '.length);
+        }
+      }
+
+      throw Exception('Failed to create tontine: $errorMessage');
     }
   }
 
@@ -191,17 +250,14 @@ class TontineService {
       final response = await ApiService.put('/tontines/$id', tontineData);
       print('Tontine updated: $response');
 
-      // Invalider le cache pour forcer un refresh
       invalidateCache();
 
-      if (response is Map<String, dynamic>) {
-        if (response.containsKey('status') && response['status'] >= 400) {
-          throw Exception('API Error: ${response['status']} - ${response['message'] ?? 'Unknown error'}');
-        }
+      if (response.containsKey('status') && response['status'] >= 400) {
+        throw Exception('API Error: ${response['status']} - ${response['message'] ?? 'Unknown error'}');
+      }
 
-        if (response.containsKey('data')) {
-          return _parseTontineFromJson(response['data']);
-        }
+      if (response.containsKey('data')) {
+        return _parseTontineFromJson(response['data']);
       }
 
       throw Exception('Invalid response format');
@@ -282,7 +338,7 @@ class TontineService {
   static Future<void> startTontine(String tontineId) async {
     print('Starting tontine $tontineId...');
     try {
-      await updateTontine(tontineId, {'tontineStatus': 'ongoing'});
+      await updateTontine(tontineId, {'status': 'ongoing'});
       print('Tontine started');
     } catch (e) {
       print('Failed to start tontine: $e');
@@ -346,7 +402,123 @@ class TontineService {
       throw Exception('Failed to join tontine: $e');
     }
   }
+  // Ajouter cette méthode dans la classe TontineService
 
+
+  static Future<Tontine> getTontineByCode(String code) async {
+    print('Fetching tontine by code: $code');
+
+    try {
+
+
+      final response = await ApiService.get('/tontine/$code');
+      print('Tontine fetched by code: $response');
+
+      if (response is Map<String, dynamic>) {
+        // Vérifier les erreurs HTTP dans la réponse
+        if (response.containsKey('statusCode') && response['statusCode'] >= 400) {
+          String errorMsg = response['message'] ?? 'Erreur inconnue';
+          throw Exception('Erreur API: ${response['statusCode']} - $errorMsg');
+        }
+
+        if (response.containsKey('status') && response['status'] >= 400) {
+          String errorMsg = response['message'] ?? 'Erreur inconnue';
+          throw Exception('Erreur API: ${response['status']} - $errorMsg');
+        }
+
+
+        if (response.containsKey('id')) {
+          return _parseTontineFromJson(response);
+        }
+
+        // Si les données sont dans un champ 'data'
+        if (response.containsKey('data')) {
+          return _parseTontineFromJson(response['data']);
+        }
+
+        // Si les données sont dans un champ 'tontine'
+        if (response.containsKey('tontine')) {
+          return _parseTontineFromJson(response['tontine']);
+        }
+      }
+
+      throw Exception('Format de réponse invalide');
+
+    } catch (e) {
+      print('Failed to fetch tontine by code: $e');
+
+      // Gestion spécifique des erreurs
+      String errorMessage = e.toString();
+
+      if (errorMessage.contains('502') || errorMessage.contains('503') || errorMessage.contains('504')) {
+        throw Exception('Serveur temporairement indisponible. Veuillez réessayer.');
+      }
+
+      if (errorMessage.contains('404')) {
+        throw Exception('Tontine non trouvée avec le code: $code');
+      }
+
+      if (errorMessage.contains('401') || errorMessage.contains('403')) {
+        throw Exception('Authentification requise. Veuillez vous reconnecter.');
+      }
+
+      if (errorMessage.contains('Pas de connexion internet')) {
+        throw Exception('Pas de connexion internet');
+      }
+
+      // Pour les tests seulement - retourner mock data
+      if (errorMessage.contains('Network error') || errorMessage.contains('HTTP Error')) {
+        print('Returning mock tontine for testing purposes');
+        return _getMockTontineByCode(code);
+      }
+
+      // Re-throw l'erreur pour les autres cas
+      throw Exception('Erreur lors de la récupération de la tontine: ${e.toString()}');
+    }
+  }
+
+
+
+// Méthode mock pour les tests
+  static Tontine _getMockTontineByCode(String code) {
+    print('Returning mock tontine for code: $code');
+
+    return Tontine(
+      id: '1',
+      nom: 'Mariage de Clovis',
+      status: TontineStatus.pending,
+      periodicite: FrequenceTontine.month,
+      cotisation: 10000,
+      frais: 500,
+      dateDebut: DateTime(2024, 11, 6),
+      nbreTour: 12,
+      tour: 0,
+      codeEntree: code,
+      owner: 'Clovis Adjambro',
+      participants: [
+        Participant(
+          nom: 'Clovis Adjambro',
+          msisdn: '07 00 03 00 01',
+          join: true,
+          round: 1,
+          currentAmount: 10000,
+          expectedAmount: 10000,
+          emitPayement: [],
+          receivPayement: [],
+        ),
+        Participant(
+          nom: 'Marie Dupont',
+          msisdn: '07 00 03 00 02',
+          join: true,
+          round: 2,
+          currentAmount: 5000,
+          expectedAmount: 10000,
+          emitPayement: [],
+          receivPayement: [],
+        ),
+      ],
+    );
+  }
 
   static Future<Tontine?> getTontineById(String id) async {
     try {
