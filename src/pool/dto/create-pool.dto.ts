@@ -67,7 +67,7 @@ export class CreatePoolDto {
   startDate: string;
 
   @IsOptional()
-  inviteCode: number;
+  inviteCode: string;
   @ApiProperty({
     description: 'Liste des participants',
     type: [ParticipantDto],

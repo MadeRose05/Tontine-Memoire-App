@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { config } from 'dotenv';
 import { AppModule } from './app.module';
+import { HttpExceptionFilter } from './filters/http-exception.filter';
 
 config();
 
@@ -45,7 +46,7 @@ async function bootstrap() {
    * Enabling api versioning
    */
   app.enableVersioning({ type: VersioningType.URI });
-
+  // app.useGlobalFilters(new HttpExceptionFilter());
   //Starting server
   await app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}🔥`);

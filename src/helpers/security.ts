@@ -19,7 +19,7 @@ export const comparePwd = async (bodyPwd: string, dbPwd: string) => {
 export const generateToken = (id: string, msisdn: string) => {
   const secret = process.env.JWT_TOKEN_SECRET || 'tontino-jwt-secret';
   return jwt.sign({ userId: id, msisdn }, secret, {
-    expiresIn: '5 days',
+    expiresIn: '1 days',
   });
 };
 

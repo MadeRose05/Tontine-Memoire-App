@@ -20,11 +20,20 @@ export class PoolMembersRepository {
        
       });
       if (!poolMembership)
-        return new NotFoundException({ message: 'Pool membership not found' });
+       throw new NotFoundException({ message: 'Pool membership not found' });
 
       return poolMembership;
     } catch (error) {
-      return new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+  async createMembership(round:number,userId:string,tontineId:string) {
+    return await this.prismaService.participants.create({
+      data: {
+        round,
+        tontineId,
+        userId
+      }
+    })
   }
 }

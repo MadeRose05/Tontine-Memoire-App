@@ -90,7 +90,7 @@ model Tontine {
   totalRound   Int
   frequence    Frequence      @default(Month)
   startDate    String?
-  inviteCode   Int? // invite code to join pool
+  inviteCode   String? // invite code to join pool
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   wallet       Wallets?

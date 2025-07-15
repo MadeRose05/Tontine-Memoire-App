@@ -5,3 +5,4 @@ import { PrismaService } from './prisma/prisma.service';
 export class AppService {
   constructor(private prismaService: PrismaService) {}
 }
+ 

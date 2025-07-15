@@ -3,6 +3,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  Logger,
 } from '@nestjs/common';
 import { generate } from 'otp-generator';
 import { EmailService } from 'src/emails/emails.service';
@@ -15,6 +16,7 @@ import { PoolRepository } from './pool.repository';
 
 @Injectable()
 export class PoolService {
+  private logger = Logger
   constructor(
     private poolRepository: PoolRepository,
     private prismaService: PrismaService,
@@ -25,7 +27,7 @@ export class PoolService {
   async create(createPoolDto: CreatePoolDto, userId: string) {
     try {
       // generate invitation code
-      const inviteCode = Number(
+      const inviteCode = String(
         generate(6, {
           digits: true,
           upperCaseAlphabets: true,
@@ -85,7 +87,10 @@ export class PoolService {
       // get pool membership
       const poolMembership =
         await this.poolMembersRepository.findPoolMembership(msisdn, poolId);
-
+      if (!poolMembership) {
+  return new HttpException('Tontine membership not found', HttpStatus.NOT_FOUND);
+      }
+      this.logger.log("invitation",poolMembership)
       const user = poolMembership.member;
       const pool = poolMembership.pool;
 
@@ -117,11 +122,8 @@ export class PoolService {
   }
 
   async findOnePool(id: string) {
-    try {
-      return await this.poolRepository.findOnePool(id);
-    } catch (error) {
-      return new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+    return await this.poolRepository.findOnePool(id);
+   
   }
   async findAllPool(id: string) {
     try {
@@ -146,7 +148,28 @@ export class PoolService {
   async deleteAllPool() {
     return await this.poolRepository.deleteAllPool();
   }
-  async joinPool(code: number, msisdn: string) {
+  async joinPool(code: string, msisdn: string) {
     const findPool = await this.poolRepository.findByInviteCode(code);
+    if (!findPool) {
+    return  new BadRequestException('Tontine not found');
+    }
+    console.log("tontine",findPool)
+    const invitation = await this.poolMembersRepository.findPoolMembership(
+      msisdn,
+      findPool.id,
+    );
+ 
+    console.log('invitation', invitation);
+ const user =   await this.prismaService.user.update({
+      where: { msisdn },
+      data: {
+        name:invitation?.nom
+   }
+  })
+  if(!user) {
+    throw new BadRequestException('User not found');
+  }
+  return  this.poolMembersRepository.createMembership(invitation.round,user.id,findPool.id)
+
   }
 }

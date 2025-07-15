@@ -38,9 +38,9 @@ export class PoolController {
     return this.poolService.findAllPool(userId);
   }
 
-  @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.poolService.findOnePool(id);
+  @Get(':code')
+  async findOne(@Param('code') code: string) {
+    return await this.poolService.findOnePool(code);
   }
 
   @Patch(':id')
@@ -67,15 +67,15 @@ export class PoolController {
   @ApiParam({
     name: 'code',
   })
-  requestJoinPool(
+  async requestJoinPool(
     @AuthUser() msisdn: string,
-    @Param('code', ParseIntPipe) code: number,
+    @Param('code') code: string,
   ) {
-    return this.poolService.joinPool(code, msisdn);
+    return await this.poolService.joinPool(code, msisdn);
   }
 
   @Delete()
-  remove() {
-    return this.poolService.deleteAllPool();
+  remove(@Param('id', ParseUUIDPipe) id: string) {
+    return this.poolService.deleteOnePool(id);
   }
 }

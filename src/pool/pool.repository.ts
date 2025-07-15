@@ -20,9 +20,15 @@ export class PoolRepository {
       createdBy:createPool.createdBy,
     }
     const participants = createPool.participants
+    const owener = await this.prismaService.user.findFirst({
+      where: { id: createPool.createdBy },
+    })
+    let owenerRound = participants.find((user) => user.msisdn == owener.msisdn);
+    if (!owenerRound) return new NotFoundException({ message: 'owner not found in participants list' });
 
+ 
     try {
-      return await this.prismaService.tontine.create({
+      const pool = await this.prismaService.tontine.create({
         data: {
           ...body,
           wallet: {
@@ -32,6 +38,26 @@ export class PoolRepository {
           },
         },
       });
+      participants.map(async(user) => {
+        if (user.msisdn != owener.msisdn) {
+          await this.prismaService.invitation.create({
+            data: {
+              ...user,
+              tontineId: pool.id,
+            },
+          });
+       }
+      });
+      let owenerRound = participants.find(user => user.msisdn == owener.msisdn)
+      await this.prismaService.participants.create({
+        data: {
+          
+          tontineId: pool.id,
+          userId: body.createdBy,
+          round:owenerRound.round
+        }
+      })
+      return pool;
     } catch (error) {
       return new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -50,21 +76,43 @@ export class PoolRepository {
 
  
 
-  async findOnePool(id: string): Promise<any | Tontine> {
+  async findOnePool(code: string): Promise<any | Tontine> {
     try {
-      const data = await this.prismaService.tontine.findUnique({
-        where: { id },
-        include: { wallet: true, participants: true, owner: true },
+      const data = await this.prismaService.tontine.findFirst({
+        where: {  inviteCode:code},
+        include: {
+          wallet: true,
+          participants: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  msisdn: true,
+                  name: true,
+                },
+              },
+            },
+          },
+          owner: {
+            select: {
+              id: true,
+              msisdn: true,
+              name: true,
+            },
+          },
+        },
       });
-      if (!data) return new NotFoundException({ message: 'Pool not found' });
+      if (!data) throw new NotFoundException({
+        message: `tontine with invite code ${code} code not found`,
+      });
 
       return data;
     } catch (error) {
-      return new HttpException(error.message, HttpStatus.NOT_FOUND);
+      throw new HttpException(error.message, HttpStatus.NOT_FOUND);
     }
   }
 
-  async findByInviteCode(code: number): Promise<any> {
+  async findByInviteCode(code: string): Promise<any> {
     try {
       const data = await this.prismaService.tontine.findFirst({
         where: {
@@ -72,21 +120,41 @@ export class PoolRepository {
         },
       });
       if (!data)
-        return new NotFoundException({
+        throw new NotFoundException({
           message: `tontine with invite code ${code} code not found`,
         });
 
       return data;
     } catch (error) {
-      return new HttpException(error.message, HttpStatus.NOT_FOUND);
+      throw new HttpException(error.message, HttpStatus.NOT_FOUND);
     }
   }
 
   async findAllPool(id:string) {
     try {
       return await this.prismaService.tontine.findMany({
-        where:{createdBy:id},
-        include: { wallet: true, participants: true, owner: true },
+        where: { createdBy: id },
+        include: {
+          wallet: true,
+          participants: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  msisdn: true,
+                  name: true,
+                },
+              },
+            },
+          },
+          owner: {
+            select: {
+              id: true,
+              msisdn: true,
+              name: true,
+            },
+          },
+        },
       });
     } catch (error) {
       return new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
