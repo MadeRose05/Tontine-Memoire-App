@@ -4,18 +4,24 @@ import {
   Delete,
   Get,
   Param,
-  ParseIntPipe,
   ParseUUIDPipe,
   Patch,
   Post,
 } from '@nestjs/common';
 import { UseGuards } from '@nestjs/common/decorators/core/use-guards.decorator';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AuthUser, AuthUserMsisdn } from 'src/users/users.decorator';
 import { AuthGuard } from 'src/users/users.guard';
+import { CotisationDto } from './dto/cotisation.dto';
 import { CreatePoolDto } from './dto/create-pool.dto';
 import { UpdatePoolDto } from './dto/update-pool.dto';
 import { PoolService } from './pool.service';
-import { ApiTags,ApiOperation,ApiBody, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 
 @Controller({
   path: 'tontine',
@@ -74,8 +80,19 @@ export class PoolController {
   ) {
     return await this.poolService.joinPool(code, msisdn);
   }
+  @Post('/cotisation')
+  @ApiOperation({ summary: 'envoyer sa cotisation' })
+  async sendCollecte(
+    @AuthUserMsisdn() msisdn: string,
+    @Body() data: CotisationDto,
+  ) {
+    return await this.poolService.sendCotisation(msisdn, data);
+  }
 
   @Delete()
+  @ApiParam({
+    name: 'id',
+  })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.poolService.deleteOnePool(id);
   }

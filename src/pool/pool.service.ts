@@ -13,6 +13,7 @@ import { CreatePoolDto } from './dto/create-pool.dto';
 import { InviteResponse } from './dto/invite-response.dto';
 import { UpdatePoolDto } from './dto/update-pool.dto';
 import { PoolRepository } from './pool.repository';
+import { CotisationDto } from './dto/cotisation.dto';
 
 @Injectable()
 export class PoolService {
@@ -144,6 +145,7 @@ export class PoolService {
             participants: {
               include: {
                 user: true,
+                Transaction:true
               },
             },
             Transaction: true,
@@ -157,6 +159,7 @@ export class PoolService {
                 participants: {
                   include: {
                     user: true,
+                    Transaction:true
                   },
                 },
                 Transaction: true,
@@ -167,7 +170,7 @@ export class PoolService {
         },
       },
     });
-
+   
     if (!user) {
       throw new Error('Utilisateur non trouvé');
     }
@@ -188,6 +191,71 @@ export class PoolService {
     const allTontines = Array.from(allTontinesMap.values());
 
     return allTontines;
+  }
+  async sendCotisation(userMsisdn: string, data: CotisationDto): Promise<any> {
+    const user = await this.prismaService.user.findUnique({
+      where: { msisdn: userMsisdn },
+    });
+
+    if (!user) {
+      throw new BadRequestException('Utilisateur non trouvé');
+    }
+
+    const tontine = await this.prismaService.tontine.findUnique({
+      where: { id: data.tontineId },
+      include: {
+        participants: true,
+      },
+    });
+
+    if (!tontine) {
+      throw new BadRequestException('Tontine introuvable');
+    }
+
+    const isParticipant = tontine.participants.find(
+      (p) => p.userId === user.id,
+    );
+
+    if (!isParticipant) {
+      throw new BadRequestException('Vous ne participez pas à cette tontine');
+    }
+
+    // Optionnel : vérifier que l'utilisateur n'a pas déjà cotisé ce mois-ci
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const existingCotisation = await this.prismaService.transaction.findFirst({
+      where: {
+        senderId: isParticipant.id,
+        tontineId: tontine.id,
+        tour: data.tour,
+      },
+    });
+
+    if (existingCotisation) {
+      throw new BadRequestException('Vous avez déjà cotisé pour ce tour');
+    }
+
+    // Créer la transaction
+    const cotisation = await this.prismaService.transaction.create({
+      data: {
+        senderId: isParticipant.id,
+        tontineId: tontine.id,
+        amount: tontine.cotisation,
+        tour: data.tour,
+      },
+    });
+    await this.prismaService.wallets.update({
+      where: { tontineId: tontine.id },
+      data: {
+        amount:{increment : tontine.cotisation}
+      }
+    })
+
+    return {
+      message: 'Cotisation envoyée avec succès',
+      data: cotisation,
+    };
   }
 
   update(id: number, updatePoolDto: UpdatePoolDto) {
