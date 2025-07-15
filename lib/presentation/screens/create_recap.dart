@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../widgets/custom_app_bar.dart';
+import 'create_tour.dart'; // Import de la page create_tour
 
 class CreateRecap extends StatefulWidget {
   final Map<String, dynamic> formData;
@@ -187,19 +188,19 @@ class _CreateRecapState extends State<CreateRecap> {
             ),
             SizedBox(height: 32),
 
-            // Bouton Ajouter
+            // Bouton Suivant (remplace Ajouter)
             SizedBox(
               width: double.infinity,
               child: Material(
-                color: participants.isEmpty ? Colors.grey[300] : Colors.orange,
+                color: participants.length < 2 ? Colors.grey[300] : Colors.orange,
                 borderRadius: BorderRadius.circular(12),
                 child: InkWell(
-                  onTap: participants.isEmpty ? null : _createTontine,
+                  onTap: participants.length < 2 ? null : _goToNextStep,
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     padding: EdgeInsets.symmetric(vertical: 16),
                     child: Text(
-                      'Ajouter',
+                      'Suivant',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white,
@@ -335,7 +336,6 @@ class _CreateRecapState extends State<CreateRecap> {
     }
   }
 
-
   void _showNoContactsDialog() {
     showDialog(
       context: context,
@@ -414,34 +414,29 @@ class _CreateRecapState extends State<CreateRecap> {
     });
   }
 
-  void _createTontine() {
-    if (participants.isEmpty) {
+  void _goToNextStep() {
+    if (participants.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Veuillez ajouter au moins un participant'),
+          content: Text('Veuillez ajouter au moins 2 participants'),
           backgroundColor: Colors.red,
         ),
       );
       return;
     }
 
-    // Créer l'objet tontine complet
+    // Créer l'objet tontine complet avec les participants
     final tontineData = {
       ...widget.formData,
       'participants': participants,
     };
 
-    // Ici vous pouvez traiter la création de la tontine
-    // Par exemple, l'envoyer à votre API
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Tontine créée avec succès !'),
-        backgroundColor: Colors.green,
+    // Navigation vers la page create_tour
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreateTour(formData: tontineData),
       ),
     );
-
-    // Retourner à la page précédente ou naviguer vers une autre page
-    Navigator.pop(context);
   }
 }

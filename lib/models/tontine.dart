@@ -2,7 +2,6 @@ import 'package:intl/intl.dart';
 
 enum TontineStatus { pending, ongoing, ended }
 enum FrequenceTontine { day, week, month }
-enum BenefType { unique, multiples }
 enum PaymentStatus { done, failed }
 
 class Beneficiaire {
@@ -55,7 +54,6 @@ class Tontine {
   final DateTime dateDebut;
   final int nbreTour;
   final int tour;
-  final BenefType typeBeneficiaire;
   final String codeEntree;
   final String owner;
   final List<Participant> participants;
@@ -70,7 +68,6 @@ class Tontine {
     required this.dateDebut,
     required this.nbreTour,
     required this.tour,
-    required this.typeBeneficiaire,
     required this.codeEntree,
     required this.owner,
     required this.participants,

@@ -3,6 +3,8 @@ import '../../domain/services/tontine_service.dart';
 import '../../models/tontine.dart';
 import '../widgets/custom_app_bar.dart';
 import 'create_tontine_form.dart';
+import 'join_code.dart';
+import 'ongoing_tontine.dart'; // Import de la page ongoing_tontine
 
 class Home extends StatefulWidget {
   @override
@@ -181,7 +183,21 @@ class _HomeState extends State<Home> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          // Handle card tap
+          // Navigation vers OngoingTontine pour les tontines en cours
+          if (isOngoing) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => OngoingTontine(tontine: tontine),
+              ),
+            );
+          } else {
+            // Pour les tontines en attente, on peut ajouter une autre navigation si nécessaire
+            // ou simplement afficher un message
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Tontine en attente de démarrage')),
+            );
+          }
         },
         borderRadius: BorderRadius.circular(12),
         child: Container(
@@ -329,7 +345,10 @@ class _HomeState extends State<Home> {
             borderRadius: BorderRadius.circular(12),
             child: InkWell(
               onTap: () {
-                // Handle join tontine
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => JoinCode()),
+                );
               },
               borderRadius: BorderRadius.circular(12),
               child: Container(
