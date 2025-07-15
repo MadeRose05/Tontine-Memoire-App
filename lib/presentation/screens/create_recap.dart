@@ -24,6 +24,26 @@ class _CreateRecapState extends State<CreateRecap> {
     _loadCurrentUser();
   }
 
+  // Méthode pour formater le numéro de téléphone
+  String _formatPhoneNumber(String phoneNumber) {
+    if (phoneNumber.isEmpty) return phoneNumber;
+
+    // Supprimer tous les espaces, tirets et autres caractères non numériques
+    String cleanNumber = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
+
+    // Si le numéro commence par 0, on le supprime
+    if (cleanNumber.startsWith('0')) {
+      cleanNumber = cleanNumber.substring(1);
+    }
+
+    // Si le numéro ne commence pas par 225, on l'ajoute
+    if (!cleanNumber.startsWith('225')) {
+      cleanNumber = '225$cleanNumber';
+    }
+
+    return cleanNumber;
+  }
+
   Future<void> _loadCurrentUser() async {
     try {
       final userData = await AuthService.getStoredUserData();
@@ -31,7 +51,7 @@ class _CreateRecapState extends State<CreateRecap> {
         setState(() {
           participants.add({
             'name': userData['userName']!,
-            'phone': userData['msisdn']!,
+            'phone': _formatPhoneNumber(userData['msisdn']!),
             'isCurrentUser': 'true', // Marquer comme utilisateur actuel
           });
           _isLoadingUserData = false;
@@ -355,7 +375,7 @@ class _CreateRecapState extends State<CreateRecap> {
                         final contact = contacts[index];
                         final name = contact.displayName;
                         final phone = contact.phones.isNotEmpty
-                            ? contact.phones.first.number
+                            ? _formatPhoneNumber(contact.phones.first.number)
                             : '';
 
                         return ListTile(

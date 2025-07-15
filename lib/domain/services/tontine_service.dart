@@ -34,7 +34,8 @@ class TontineService {
       if (response is List) {
         tontinesData = response;
       } else if (response is Map<String, dynamic>) {
-        if (response.containsKey('status') && response['status'] >= 400) {
+        // Check for HTTP status codes (numeric)
+        if (response.containsKey('status') && response['status'] is int && response['status'] >= 400) {
           throw Exception('API Error: ${response['status']} - ${response['message'] ?? 'Unknown error'}');
         }
 
@@ -252,7 +253,7 @@ class TontineService {
 
       invalidateCache();
 
-      if (response.containsKey('status') && response['status'] >= 400) {
+      if (response.containsKey('status') && response['status'] is int && response['status'] >= 400) {
         throw Exception('API Error: ${response['status']} - ${response['message'] ?? 'Unknown error'}');
       }
 
@@ -322,7 +323,7 @@ class TontineService {
     try {
       final response = await ApiService.post('/tontines/$tontineId/next-tour', {});
 
-      if (response is Map<String, dynamic> && response.containsKey('status') && response['status'] >= 400) {
+      if (response is Map<String, dynamic> && response.containsKey('status') && response['status'] is int && response['status'] >= 400) {
         throw Exception('API Error: ${response['status']} - ${response['message'] ?? 'Unknown error'}');
       }
 
@@ -360,7 +361,7 @@ class TontineService {
       print('Tontine fetched by user: $response');
 
       if (response is Map<String, dynamic>) {
-        if (response.containsKey('status') && response['status'] >= 400) {
+        if (response.containsKey('status') && response['status'] is int && response['status'] >= 400) {
           throw Exception('API Error: ${response['status']} - ${response['message'] ?? 'Unknown error'}');
         }
 
@@ -385,11 +386,11 @@ class TontineService {
         throw Exception('User PIN not found in secure storage');
       }
 
-      final response = await ApiService.post('/tontines/join/$code', {
+      final response = await ApiService.post('/tontine/join/$code', {
         'user_pin': userPin,
       });
 
-      if (response is Map<String, dynamic> && response.containsKey('status') && response['status'] >= 400) {
+      if (response is Map<String, dynamic> && response.containsKey('status') && response['status'] is int && response['status'] >= 400) {
         throw Exception('API Error: ${response['status']} - ${response['message'] ?? 'Unknown error'}');
       }
 
@@ -402,31 +403,27 @@ class TontineService {
       throw Exception('Failed to join tontine: $e');
     }
   }
-  // Ajouter cette méthode dans la classe TontineService
-
 
   static Future<Tontine> getTontineByCode(String code) async {
     print('Fetching tontine by code: $code');
 
     try {
-
-
       final response = await ApiService.get('/tontine/$code');
       print('Tontine fetched by code: $response');
 
       if (response is Map<String, dynamic>) {
-        // Vérifier les erreurs HTTP dans la réponse
-        if (response.containsKey('statusCode') && response['statusCode'] >= 400) {
+        // Vérifier les erreurs HTTP dans la réponse (status codes numériques)
+        if (response.containsKey('statusCode') && response['statusCode'] is int && response['statusCode'] >= 400) {
           String errorMsg = response['message'] ?? 'Erreur inconnue';
           throw Exception('Erreur API: ${response['statusCode']} - $errorMsg');
         }
 
-        if (response.containsKey('status') && response['status'] >= 400) {
+        if (response.containsKey('status') && response['status'] is int && response['status'] >= 400) {
           String errorMsg = response['message'] ?? 'Erreur inconnue';
           throw Exception('Erreur API: ${response['status']} - $errorMsg');
         }
 
-
+        // Si la réponse contient directement les données de la tontine
         if (response.containsKey('id')) {
           return _parseTontineFromJson(response);
         }
@@ -477,9 +474,7 @@ class TontineService {
     }
   }
 
-
-
-// Méthode mock pour les tests
+  // Méthode mock pour les tests
   static Tontine _getMockTontineByCode(String code) {
     print('Returning mock tontine for code: $code');
 

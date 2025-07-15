@@ -4,7 +4,9 @@ import '../../models/tontine.dart';
 import '../widgets/custom_app_bar.dart';
 import 'create_tontine_form.dart';
 import 'join_code.dart';
-import 'ongoing_tontine.dart'; // Import de la page ongoing_tontine
+import 'ongoing_tontine.dart';
+import 'pending_tontine_page.dart'; // Import de la page pending
+import 'history_page.dart'; // Import de la page history
 
 class Home extends StatefulWidget {
   @override
@@ -183,8 +185,8 @@ class _HomeState extends State<Home> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          // Navigation vers OngoingTontine pour les tontines en cours
           if (isOngoing) {
+            // Navigation vers OngoingTontine pour les tontines en cours
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -192,10 +194,12 @@ class _HomeState extends State<Home> {
               ),
             );
           } else {
-            // Pour les tontines en attente, on peut ajouter une autre navigation si nécessaire
-            // ou simplement afficher un message
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Tontine en attente de démarrage')),
+            // Navigation vers PendingTontinePage pour les tontines en attente
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PendingTontinePage(tontine: tontine),
+              ),
             );
           }
         },
@@ -430,7 +434,13 @@ class _HomeState extends State<Home> {
                     borderRadius: BorderRadius.circular(12),
                     child: InkWell(
                       onTap: () {
-                        // Handle history item tap
+                        // Navigation vers HistoryPage pour les tontines terminées
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => HistoryPage(tontine: tontine),
+                          ),
+                        );
                       },
                       borderRadius: BorderRadius.circular(12),
                       child: Container(

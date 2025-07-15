@@ -12,11 +12,11 @@ class PhoneLogin extends StatefulWidget {
 class _PhoneLoginState extends State<PhoneLogin> {
   final TextEditingController _phoneController = TextEditingController();
   bool _isLoading = false;
-  String _selectedCountryCode = '+225';
+  String _selectedCountryCode = '225';
   final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
   final List<Map<String, String>> _countryCodes = [
-    {'code': '+225', 'country': 'CI', 'flag': '🇨🇮'},
+    {'code': '225', 'country': 'CI', 'flag': '🇨🇮'},
     {'code': '+33', 'country': 'FR', 'flag': '🇫🇷'},
     {'code': '+1', 'country': 'US', 'flag': '🇺🇸'},
     {'code': '+44', 'country': 'GB', 'flag': '🇬🇧'},

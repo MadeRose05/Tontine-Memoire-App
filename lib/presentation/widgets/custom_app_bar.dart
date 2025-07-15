@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../screens/user_profile_page.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showBackButton;
@@ -34,7 +35,10 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         IconButton(
           icon: Icon(Icons.notifications_outlined, color: Colors.black),
           onPressed: () {
-            // Handle notifications
+            // TODO: Implémenter les notifications
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Notifications - Fonctionnalité en développement')),
+            );
           },
         ),
         IconButton(
@@ -44,7 +48,11 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
             child: Icon(Icons.person, color: Colors.grey[600], size: 20),
           ),
           onPressed: () {
-            // Handle profile
+            // Navigation vers la page de profil
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => UserProfilePage()),
+            );
           },
         ),
       ],

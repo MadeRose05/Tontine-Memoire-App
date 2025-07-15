@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../domain/services/tontine_service.dart';
+import '../screens/home.dart';
+
 
 class ResultBottomSheet extends StatelessWidget {
   final bool isSuccess;
@@ -112,6 +114,7 @@ class ResultBottomSheet extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               child: InkWell(
                 onTap: () async {
+                  // Fermer le bottom sheet
                   Navigator.of(context).pop();
 
                   // Si c'est un succès, on invalide le cache pour forcer le refresh
@@ -119,6 +122,13 @@ class ResultBottomSheet extends StatelessWidget {
                     TontineService.invalidateCache();
                   }
 
+                  // Rediriger vers la page d'accueil
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => Home()),
+                        (route) => false,
+                  );
+
+                  // Appeler onDismiss si défini
                   if (onDismiss != null) {
                     onDismiss!();
                   }
