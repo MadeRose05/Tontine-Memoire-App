@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../domain/services/auth_service.dart';
 import '../widgets/custom_app_bar.dart';
 import 'auth/phone_login.dart';
 
@@ -9,10 +10,12 @@ class UserProfilePage extends StatefulWidget {
 }
 
 class _UserProfilePageState extends State<UserProfilePage> {
+  String? userName;
+  String? userPhone;
+  String accountBalance = '200,000 CFA';
+  bool isLoading = true;
+  bool isLoggingOut = false;
   final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
-  String _userName = '';
-  String _userPhone = '';
-  bool _isLoading = true;
 
   @override
   void initState() {
@@ -22,58 +25,131 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
   Future<void> _loadUserData() async {
     try {
-      final name = await _secureStorage.read(key: 'user_name') ?? 'Utilisateur';
-      final phone = await _secureStorage.read(key: 'user_msisdn') ?? '';
-
+      final userData = await AuthService.getStoredUserData();
       setState(() {
-        _userName = name;
-        _userPhone = phone;
-        _isLoading = false;
+        userName = userData['userName'];
+        userPhone = userData['msisdn'];
+        isLoading = false;
       });
     } catch (e) {
       setState(() {
-        _userName = 'Utilisateur';
-        _userPhone = '';
-        _isLoading = false;
+        isLoading = false;
       });
+      print('Erreur lors du chargement des données utilisateur: $e');
     }
   }
 
   Future<void> _logout() async {
+    setState(() {
+      isLoggingOut = true;
+    });
+
+    try {
+      // Vider le cache local uniquement
+      await _secureStorage.deleteAll();
+
+      // Rediriger vers la page d'authentification
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => PhoneLogin()),
+            (route) => false,
+      );
+    } catch (e) {
+      setState(() {
+        isLoggingOut = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur lors de la déconnexion: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showLogoutDialog() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Text(
             'Déconnexion',
-            style: TextStyle(fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
           ),
-          content: Text('Êtes-vous sûr de vouloir vous déconnecter ?'),
+          content: Text(
+            'Êtes-vous sûr de vouloir vous déconnecter ?',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 16,
+            ),
+          ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.of(context).pop(),
               child: Text(
                 'Annuler',
-                style: TextStyle(color: Colors.grey[600]),
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             TextButton(
-              onPressed: () async {
-                Navigator.pop(context);
-
-                // Vider le cache
-                await _secureStorage.deleteAll();
-
-                // Rediriger vers la page de connexion
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => PhoneLogin()),
-                      (Route<dynamic> route) => false,
-                );
+              onPressed: () {
+                Navigator.of(context).pop();
+                _logout();
               },
               child: Text(
                 'Déconnecter',
-                style: TextStyle(color: Colors.red),
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showContactDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            'Aide et Support',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          content: Text(
+            'Contactez-nous sur Maxit',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 16,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'OK',
+                style: TextStyle(
+                  color: Colors.orange,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -85,27 +161,43 @@ class _UserProfilePageState extends State<UserProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.grey[100],
       appBar: CustomAppBar(
         title: 'Profil',
         showBackButton: true,
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: Colors.orange))
+      body: isLoading
+          ? Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
+        padding: EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // En-tête du profil
             Container(
               width: double.infinity,
-              color: Colors.white,
               padding: EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
               child: Column(
                 children: [
                   // Avatar
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundColor: Colors.orange[100],
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
                     child: Icon(
                       Icons.person,
                       size: 40,
@@ -113,11 +205,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     ),
                   ),
                   SizedBox(height: 16),
-                  // Nom utilisateur
+                  // Nom d'utilisateur
                   Text(
-                    _userName,
+                    userName ?? 'Utilisateur',
                     style: TextStyle(
-                      fontSize: 22,
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
                     ),
@@ -125,7 +217,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                   SizedBox(height: 4),
                   // Numéro de téléphone
                   Text(
-                    _userPhone,
+                    userPhone ?? 'Non disponible',
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.grey[600],
@@ -134,118 +226,119 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 ],
               ),
             ),
-            SizedBox(height: 20),
+            SizedBox(height: 24),
 
-            // Options du profil
+            // Informations du compte
             Container(
-              color: Colors.white,
+              width: double.infinity,
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildProfileOption(
-                    icon: Icons.person_outline,
-                    title: 'Informations personnelles',
-                    subtitle: 'Gérer vos informations',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Fonctionnalité en développement')),
-                      );
-                    },
+                  Text(
+                    'Informations du compte',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
                   ),
-                  _buildDivider(),
-                  _buildProfileOption(
-                    icon: Icons.notifications_outlined,
-                    title: 'Notifications',
-                    subtitle: 'Paramètres de notification',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Fonctionnalité en développement')),
-                      );
-                    },
+                  SizedBox(height: 16),
+                  _buildInfoRow('Nom', userName ?? 'Non disponible'),
+                  SizedBox(height: 12),
+                  _buildInfoRow('Téléphone', userPhone ?? 'Non disponible'),
+                  SizedBox(height: 12),
+                  _buildInfoRow('Solde du compte', accountBalance),
+                ],
+              ),
+            ),
+            SizedBox(height: 24),
+
+            // Actions
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
                   ),
-                  _buildDivider(),
-                  _buildProfileOption(
-                    icon: Icons.security_outlined,
-                    title: 'Sécurité',
-                    subtitle: 'Paramètres de sécurité',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Fonctionnalité en développement')),
-                      );
-                    },
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Actions',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
                   ),
-                  _buildDivider(),
-                  _buildProfileOption(
+                  SizedBox(height: 16),
+                  _buildActionTile(
                     icon: Icons.help_outline,
                     title: 'Aide et support',
-                    subtitle: 'Besoin d\'aide ?',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Fonctionnalité en développement')),
-                      );
-                    },
+                    onTap: _showContactDialog,
                   ),
-                ],
-              ),
-            ),
-            SizedBox(height: 20),
-
-            // Section paramètres
-            Container(
-              color: Colors.white,
-              child: Column(
-                children: [
-                  _buildProfileOption(
+                  SizedBox(height: 12),
+                  _buildActionTile(
                     icon: Icons.info_outline,
                     title: 'À propos',
-                    subtitle: 'Version 1.0.0',
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('OrangeMoney Tontine v1.0.0')),
-                      );
-                    },
-                  ),
-                  _buildDivider(),
-                  _buildProfileOption(
-                    icon: Icons.privacy_tip_outlined,
-                    title: 'Confidentialité',
-                    subtitle: 'Politique de confidentialité',
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Fonctionnalité en développement')),
-                      );
+                      _showAboutDialog();
                     },
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 40),
+            SizedBox(height: 32),
 
             // Bouton de déconnexion
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24),
-              child: Container(
-                width: double.infinity,
-                child: Material(
-                  color: Colors.red[50],
+            Container(
+              width: double.infinity,
+              child: Material(
+                color: Colors.red,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  onTap: isLoggingOut ? null : _showLogoutDialog,
                   borderRadius: BorderRadius.circular(12),
-                  child: InkWell(
-                    onTap: _logout,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Row(
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Center(
+                      child: isLoggingOut
+                          ? CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      )
+                          : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
                             Icons.logout,
-                            color: Colors.red,
+                            color: Colors.white,
                             size: 20,
                           ),
                           SizedBox(width: 8),
                           Text(
                             'Se déconnecter',
                             style: TextStyle(
-                              color: Colors.red,
+                              color: Colors.white,
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
@@ -257,62 +350,149 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 ),
               ),
             ),
-            SizedBox(height: 40),
+            SizedBox(height: 32),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildProfileOption({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      leading: Container(
-        padding: EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.orange[50],
-          borderRadius: BorderRadius.circular(8),
+  Widget _buildInfoRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 2,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
+          ),
         ),
-        child: Icon(
-          icon,
-          color: Colors.orange,
-          size: 20,
+        Text(
+          ': ',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
         ),
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: Colors.black87,
+        Expanded(
+          flex: 3,
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
         ),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: TextStyle(
-          fontSize: 14,
-          color: Colors.grey[600],
-        ),
-      ),
-      trailing: Icon(
-        Icons.chevron_right,
-        color: Colors.grey[400],
-      ),
-      onTap: onTap,
-      contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      ],
     );
   }
 
-  Widget _buildDivider() {
-    return Divider(
-      height: 1,
-      color: Colors.grey[200],
-      indent: 60,
-      endIndent: 20,
+  Widget _buildActionTile({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 24,
+                color: Colors.grey[600],
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: Colors.grey[400],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAboutDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            'À propos',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'OrangeMoney Tontine',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Version 1.0.0',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 14,
+                ),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Application de gestion de tontines pour Orange Money.',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'OK',
+                style: TextStyle(
+                  color: Colors.orange,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

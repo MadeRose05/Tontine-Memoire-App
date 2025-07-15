@@ -248,7 +248,7 @@ class TontineService {
   static Future<Tontine> updateTontine(String id, Map<String, dynamic> tontineData) async {
     print('Updating tontine $id...');
     try {
-      final response = await ApiService.put('/tontines/$id', tontineData);
+      final response = await ApiService.patch('/tontines/$id', tontineData);
       print('Tontine updated: $response');
 
       invalidateCache();
