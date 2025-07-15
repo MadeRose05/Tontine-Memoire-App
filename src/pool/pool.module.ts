@@ -7,10 +7,11 @@ import { WalletModule } from 'src/wallet/wallet.module';
 import { PoolController } from './pool.controller';
 import { PoolRepository } from './pool.repository';
 import { PoolService } from './pool.service';
+import { SmsService } from 'src/sms/sms.service';
 
 @Module({
   controllers: [PoolController],
-  providers: [PoolService, PoolRepository, EmailService],
+  providers: [PoolService, PoolRepository, EmailService, SmsService],
   imports: [PrismaModule, WalletModule, UsersModule, PoolMembersModule],
 })
 export class PoolModule {}

@@ -15,10 +15,30 @@ export const AuthUser = createParamDecorator(
     }
 
     try {
-      const { userId } = verifyToken(
+      const { userId,msisdn } = verifyToken(
         request.headers.authorization.split(' ')[1],
       );
       return userId;
+    } catch (error) {
+      throw new BadRequestException(
+        'Invalid or expired auth token detected, login again',
+      );
+    }
+  },
+);
+export const AuthUserMsisdn = createParamDecorator(
+  (data: unknown, ctx: ExecutionContext) => {
+    const request = ctx.switchToHttp().getRequest();
+
+    if (!request.headers['authorization']) {
+      throw new ForbiddenException('User not logged in');
+    }
+
+    try {
+      const { userId,msisdn } = verifyToken(
+        request.headers.authorization.split(' ')[1],
+      );
+      return msisdn;
     } catch (error) {
       throw new BadRequestException(
         'Invalid or expired auth token detected, login again',

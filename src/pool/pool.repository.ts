@@ -1,12 +1,16 @@
-import { HttpException, HttpStatus, NotFoundException } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, NotFoundException } from '@nestjs/common';
 import { Injectable } from '@nestjs/common/decorators';
 import { Tontine } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreatePoolDto } from './dto/create-pool.dto';
+import { SmsService } from 'src/sms/sms.service';
 
 @Injectable()
 export class PoolRepository {
-  constructor(private prismaService: PrismaService) {}
+  constructor(
+    private prismaService: PrismaService,
+    private smsService: SmsService,
+  ) {}
 
   async createPool(createPool: CreatePoolDto) {
     const body = {
@@ -16,17 +20,19 @@ export class PoolRepository {
       startDate: createPool.startDate,
       frequence: createPool.frequence,
       totalRound: createPool.totalRound,
-      inviteCode:createPool.inviteCode,
-      createdBy:createPool.createdBy,
-    }
-    const participants = createPool.participants
+      inviteCode: createPool.inviteCode,
+      createdBy: createPool.createdBy,
+    };
+    const participants = createPool.participants;
     const owener = await this.prismaService.user.findFirst({
       where: { id: createPool.createdBy },
-    })
+    });
     let owenerRound = participants.find((user) => user.msisdn == owener.msisdn);
-    if (!owenerRound) return new NotFoundException({ message: 'owner not found in participants list' });
+    if (!owenerRound)
+      throw new BadRequestException({
+        message: 'owner not found in participants list',
+      });
 
- 
     try {
       const pool = await this.prismaService.tontine.create({
         data: {
@@ -38,7 +44,8 @@ export class PoolRepository {
           },
         },
       });
-      participants.map(async(user) => {
+      const message = `${owener.name} vous invite à rejoindre la tontine ${body.nom}. Merci d'entrer le code ${body.inviteCode} dans l'application`;
+      participants.map(async (user) => {
         if (user.msisdn != owener.msisdn) {
           await this.prismaService.invitation.create({
             data: {
@@ -46,17 +53,20 @@ export class PoolRepository {
               tontineId: pool.id,
             },
           });
-       }
+        await  this.smsService.sendSms(user.msisdn,message)
+        }
       });
-      let owenerRound = participants.find(user => user.msisdn == owener.msisdn)
+      let owenerRound = participants.find(
+        (user) => user.msisdn == owener.msisdn,
+      );
       await this.prismaService.participants.create({
         data: {
-          
           tontineId: pool.id,
           userId: body.createdBy,
-          round:owenerRound.round
-        }
-      })
+          round: owenerRound.round,
+        },
+      });
+
       return pool;
     } catch (error) {
       return new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -74,12 +84,10 @@ export class PoolRepository {
     }
   }
 
- 
-
   async findOnePool(code: string): Promise<any | Tontine> {
     try {
       const data = await this.prismaService.tontine.findFirst({
-        where: {  inviteCode:code},
+        where: { inviteCode: code },
         include: {
           wallet: true,
           participants: {
@@ -102,9 +110,10 @@ export class PoolRepository {
           },
         },
       });
-      if (!data) throw new NotFoundException({
-        message: `tontine with invite code ${code} code not found`,
-      });
+      if (!data)
+        throw new NotFoundException({
+          message: `tontine with invite code ${code} code not found`,
+        });
 
       return data;
     } catch (error) {
@@ -130,7 +139,7 @@ export class PoolRepository {
     }
   }
 
-  async findAllPool(id:string) {
+  async findAllPool(id: string) {
     try {
       return await this.prismaService.tontine.findMany({
         where: { createdBy: id },

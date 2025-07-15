@@ -16,7 +16,7 @@ import { PoolRepository } from './pool.repository';
 
 @Injectable()
 export class PoolService {
-  private logger = Logger
+  private logger = Logger;
   constructor(
     private poolRepository: PoolRepository,
     private prismaService: PrismaService,
@@ -37,10 +37,9 @@ export class PoolService {
       );
       createPoolDto.inviteCode = inviteCode;
       createPoolDto.createdBy = userId;
-      const pool = await this.poolRepository.createPool(createPoolDto);
-      return pool;
+      return await this.poolRepository.createPool(createPoolDto);
     } catch (error) {
-      return new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -88,9 +87,12 @@ export class PoolService {
       const poolMembership =
         await this.poolMembersRepository.findPoolMembership(msisdn, poolId);
       if (!poolMembership) {
-  return new HttpException('Tontine membership not found', HttpStatus.NOT_FOUND);
+        return new HttpException(
+          'Tontine membership not found',
+          HttpStatus.NOT_FOUND,
+        );
       }
-      this.logger.log("invitation",poolMembership)
+      this.logger.log('invitation', poolMembership);
       const user = poolMembership.member;
       const pool = poolMembership.pool;
 
@@ -123,7 +125,6 @@ export class PoolService {
 
   async findOnePool(id: string) {
     return await this.poolRepository.findOnePool(id);
-   
   }
   async findAllPool(id: string) {
     try {
@@ -131,6 +132,62 @@ export class PoolService {
     } catch (error) {
       return new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+  async getUserTontinesByMsisdn(msisdn: string) {
+    // Récupère l'utilisateur via son msisdn
+    const user = await this.prismaService.user.findUnique({
+      where: { msisdn },
+      select: {
+        id: true,
+        createdTontine: {
+          include: {
+            participants: {
+              include: {
+                user: true,
+              },
+            },
+            Transaction: true,
+            wallet: true,
+          },
+        },
+        Participants: {
+          include: {
+            tontine: {
+              include: {
+                participants: {
+                  include: {
+                    user: true,
+                  },
+                },
+                Transaction: true,
+                wallet: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new Error('Utilisateur non trouvé');
+    }
+
+    // Tontines qu'il a créées
+    const createdTontines = user.createdTontine;
+
+    // Tontines auxquelles il participe (extraites de Participants)
+    const participantTontines = user.Participants.map((p) => p.tontine);
+
+    // Fusionner et éviter les doublons (au cas où il est à la fois créateur et participant)
+    const allTontinesMap = new Map();
+
+    for (const t of [...createdTontines, ...participantTontines]) {
+      allTontinesMap.set(t.id, t);
+    }
+
+    const allTontines = Array.from(allTontinesMap.values());
+
+    return allTontines;
   }
 
   update(id: number, updatePoolDto: UpdatePoolDto) {
@@ -151,25 +208,28 @@ export class PoolService {
   async joinPool(code: string, msisdn: string) {
     const findPool = await this.poolRepository.findByInviteCode(code);
     if (!findPool) {
-    return  new BadRequestException('Tontine not found');
+      return new BadRequestException('Tontine not found');
     }
-    console.log("tontine",findPool)
+    console.log('tontine', findPool);
     const invitation = await this.poolMembersRepository.findPoolMembership(
       msisdn,
       findPool.id,
     );
- 
+
     console.log('invitation', invitation);
- const user =   await this.prismaService.user.update({
+    const user = await this.prismaService.user.update({
       where: { msisdn },
       data: {
-        name:invitation?.nom
-   }
-  })
-  if(!user) {
-    throw new BadRequestException('User not found');
-  }
-  return  this.poolMembersRepository.createMembership(invitation.round,user.id,findPool.id)
-
+        name: invitation?.nom,
+      },
+    });
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+    return this.poolMembersRepository.createMembership(
+      invitation.round,
+      user.id,
+      findPool.id,
+    );
   }
 }

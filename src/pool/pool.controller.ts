@@ -10,7 +10,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { UseGuards } from '@nestjs/common/decorators/core/use-guards.decorator';
-import { AuthUser } from 'src/users/users.decorator';
+import { AuthUser, AuthUserMsisdn } from 'src/users/users.decorator';
 import { AuthGuard } from 'src/users/users.guard';
 import { CreatePoolDto } from './dto/create-pool.dto';
 import { UpdatePoolDto } from './dto/update-pool.dto';
@@ -29,13 +29,14 @@ export class PoolController {
   @Post()
   @ApiOperation({ summary: 'create tontine' })
   @ApiBody({ type: CreatePoolDto })
-  create(@Body() createPoolDto: CreatePoolDto, @AuthUser() id: string) {
-    return this.poolService.create(createPoolDto, id);
+  async create(@Body() createPoolDto: CreatePoolDto, @AuthUser() id: string) {
+    return await this.poolService.create(createPoolDto, id);
   }
 
   @Get()
-  findAll(@AuthUser() userId: string) {
-    return this.poolService.findAllPool(userId);
+  async findAll(@AuthUserMsisdn() msisdn: string) {
+    console.log('msisdn', msisdn);
+    return await this.poolService.getUserTontinesByMsisdn(msisdn);
   }
 
   @Get(':code')
@@ -68,7 +69,7 @@ export class PoolController {
     name: 'code',
   })
   async requestJoinPool(
-    @AuthUser() msisdn: string,
+    @AuthUserMsisdn() msisdn: string,
     @Param('code') code: string,
   ) {
     return await this.poolService.joinPool(code, msisdn);
