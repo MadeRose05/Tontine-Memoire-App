@@ -13,7 +13,8 @@ import { CreatePoolDto } from './dto/create-pool.dto';
 import { InviteResponse } from './dto/invite-response.dto';
 import { UpdatePoolDto } from './dto/update-pool.dto';
 import { PoolRepository } from './pool.repository';
-import { CotisationDto } from './dto/cotisation.dto';
+import { CotisationDto, RappelCotisationDto } from './dto/cotisation.dto';
+import { SmsService } from 'src/sms/sms.service';
 
 @Injectable()
 export class PoolService {
@@ -21,7 +22,7 @@ export class PoolService {
   constructor(
     private poolRepository: PoolRepository,
     private prismaService: PrismaService,
-    private emailService: EmailService,
+    private smsService: SmsService,
     private poolMembersRepository: PoolMembersRepository,
   ) {}
 
@@ -123,7 +124,14 @@ export class PoolService {
       return new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
-
+  async cotisationRapel(data: RappelCotisationDto) {
+    data.numbers.map(async (msisdn) => {
+      await this.smsService.sendSms(msisdn, data.message);
+    });
+    return {
+      message: 'sms envoyé avec succès',
+    };
+  }
   async findOnePool(id: string) {
     return await this.poolRepository.findOnePool(id);
   }
@@ -145,7 +153,7 @@ export class PoolService {
             participants: {
               include: {
                 user: true,
-                Transaction:true
+                Transaction: true,
               },
             },
             Transaction: true,
@@ -159,7 +167,7 @@ export class PoolService {
                 participants: {
                   include: {
                     user: true,
-                    Transaction:true
+                    Transaction: true,
                   },
                 },
                 Transaction: true,
@@ -170,7 +178,7 @@ export class PoolService {
         },
       },
     });
-   
+
     if (!user) {
       throw new Error('Utilisateur non trouvé');
     }
@@ -248,9 +256,9 @@ export class PoolService {
     await this.prismaService.wallets.update({
       where: { tontineId: tontine.id },
       data: {
-        amount:{increment : tontine.cotisation}
-      }
-    })
+        amount: { increment: tontine.cotisation },
+      },
+    });
 
     return {
       message: 'Cotisation envoyée avec succès',

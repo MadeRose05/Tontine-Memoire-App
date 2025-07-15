@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsString } from 'class-validator';
+import { IsArray, IsNumber, IsString } from 'class-validator';
 
 export class CotisationDto {
   @ApiProperty()
@@ -8,4 +8,13 @@ export class CotisationDto {
   @ApiProperty()
   @IsString()
   tontineId: string;
+}
+export class RappelCotisationDto {
+  @ApiProperty()
+  @IsString()
+  message: string;
+  @ApiProperty()
+    @IsArray()
+  @IsString({each:true})
+  numbers: string[];
 }

@@ -18,7 +18,7 @@ import {
 } from '@nestjs/swagger';
 import { AuthUser, AuthUserMsisdn } from 'src/users/users.decorator';
 import { AuthGuard } from 'src/users/users.guard';
-import { CotisationDto } from './dto/cotisation.dto';
+import { CotisationDto, RappelCotisationDto } from './dto/cotisation.dto';
 import { CreatePoolDto } from './dto/create-pool.dto';
 import { UpdatePoolDto } from './dto/update-pool.dto';
 import { PoolService } from './pool.service';
@@ -87,6 +87,13 @@ export class PoolController {
     @Body() data: CotisationDto,
   ) {
     return await this.poolService.sendCotisation(msisdn, data);
+  }
+  @Post('/rappel')
+  @ApiOperation({ summary: 'envoyer un sms de rappel' })
+  async sendRappel(
+    @Body() data: RappelCotisationDto,
+  ) {
+    return await this.poolService.cotisationRapel( data);
   }
 
   @Delete()
