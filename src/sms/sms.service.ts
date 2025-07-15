@@ -31,4 +31,39 @@ export class SmsService {
     const data = await response.json();
     return data.access_token;
   }
+
+  async sendSms(to: string, message: string): Promise<any> {
+    const accessToken = await this.getAccessToken();
+    const senderAddress = process.env.SMS_SENDER_ADDRESS || 'tel:+2250779400916';
+    const url = `https://api.orange.com/smsmessaging/v1/outbound/${encodeURIComponent(senderAddress)}/requests`;
+
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    };
+
+    const body = JSON.stringify({
+      outboundSMSMessageRequest: {
+        address: `tel:+${to}`,
+        senderAddress: senderAddress,
+        outboundSMSTextMessage: {
+          message: message,
+        },
+      },
+    });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body,
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Erreur lors de l'envoi du SMS: ${response.statusText}`,
+      );
+    }
+
+    return await response.json();
+  }
 }
